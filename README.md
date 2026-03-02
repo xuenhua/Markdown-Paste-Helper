@@ -28,6 +28,12 @@
 4. 点击 **加载已解压的扩展程序**
 5. 选择 `browser-extension` 文件夹
 
+## 🖼️ 图片说明
+
+> 本插件**不包含**图床上传功能。Markdown 中的图片需使用**在线 URL**（如 `https://...`），本地路径的图片无法被各平台识别。
+>
+> 推荐搭配图床工具（如 PicGo + Cloudflare R2）实现「截图 → 自动上传 → 生成链接」的无缝体验。👉 [图床搭建教程](https://mp.weixin.qq.com/s/J4k3Ns0C4GCoCc2u7kz7Hg?scene=1)
+
 ## 🎯 使用方式
 
 1. 复制 Markdown 内容（从 VS Code、Obsidian 等编辑器）
