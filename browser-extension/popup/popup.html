@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1c28;
+      color: #e0e0e0;
+      padding: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #7c8aff;
+    }
+    .status {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+    .status.active {
+      background: rgba(40, 167, 69, 0.15);
+      border: 1px solid rgba(40, 167, 69, 0.3);
+      color: #6fcf7c;
+    }
+    .status.inactive {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #888;
+    }
+    .platform-name {
+      font-weight: 600;
+      color: #fff;
+    }
+    .hint {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.6;
+      margin-top: 4px;
+    }
+    .footer {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #2a2d3a;
+      font-size: 11px;
+      color: #555;
+      text-align: center;
+    }
+
+    /* ===== WeChat Settings Panel ===== */
+    #wechatSettings {
+      display: none;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid #2a2d3a;
+    }
+    #wechatSettings.show {
+      display: block;
+    }
+    .settings-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #7c8aff;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .config-section {
+      margin-bottom: 16px;
+    }
+    .section-label {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    /* Color Grid */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .color-dot {
+      height: 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .color-dot:hover {
+      transform: scale(1.08);
+    }
+    .color-dot.active {
+      border-color: #fff;
+      box-shadow: 0 0 0 1px var(--dot-color);
+    }
+    .custom-color-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .custom-color-row label {
+      font-size: 11px;
+      color: #888;
+    }
+    .custom-color-row input[type="color"] {
+      width: 28px;
+      height: 22px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: transparent;
+      cursor: pointer;
+      padding: 0;
+    }
+    .custom-color-value {
+      font-size: 11px;
+      color: #888;
+      font-family: monospace;
+    }
+
+    /* Style Preset Grid */
+    .style-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .style-card {
+      background: #22252f;
+      border: 1px solid #2e3140;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      overflow: hidden;
+    }
+    .style-card:hover {
+      border-color: #444;
+    }
+    .style-card.active {
+      border-color: #7c8aff;
+      box-shadow: 0 0 0 1px #7c8aff;
+    }
+    .style-preview {
+      height: 40px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #282b36;
+    }
+    .style-card.active .style-preview {
+      background: rgba(124, 138, 255, 0.1);
+    }
+    .preview-title {
+      height: 5px;
+      width: 60%;
+      border-radius: 3px;
+    }
+    .preview-line {
+      height: 3px;
+      background: #3a3d4a;
+      border-radius: 2px;
+    }
+    .preview-line.short { width: 80%; }
+    .style-name {
+      padding: 5px 0;
+      text-align: center;
+      font-size: 11px;
+      color: #aaa;
+    }
+    .style-card.active .style-name {
+      color: #7c8aff;
+      font-weight: 600;
+    }
+    /* Preview decorators */
+    .minimalist .preview-title { background: #7c8aff; }
+    .focus .preview-title { background: #7c8aff; width: 50%; margin: 0 auto; }
+    .elegant .preview-title {
+      border-left: 3px double #7c8aff;
+      background: transparent;
+      padding-left: 4px;
+      border-radius: 0;
+    }
+    .bold .preview-title {
+      background: linear-gradient(to right, transparent, #7c8aff, transparent);
+      height: 4px;
+      width: 80%;
+      margin: 2px auto 0;
+    }
+
+    /* Advanced Toggle */
+    .advanced-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: 6px 0;
+      color: #888;
+      font-size: 12px;
+      user-select: none;
+    }
+    .advanced-toggle svg {
+      transition: transform 0.3s;
+      fill: #666;
+      width: 16px;
+      height: 16px;
+    }
+    .advanced-toggle.open svg {
+      transform: rotate(180deg);
+    }
+    .advanced-content {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .advanced-content.show {
+      display: flex;
+    }
+    .setting-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .setting-row label {
+      font-size: 11px;
+      color: #666;
+    }
+    .btn-group {
+      display: flex;
+      background: #22252f;
+      border-radius: 6px;
+      padding: 2px;
+    }
+    .radio-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 5px 0;
+      font-size: 11px;
+      color: #aaa;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: all 0.2s;
+    }
+    .radio-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .radio-btn.active {
+      background: #2e3140;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    .font-size-group .radio-btn {
+      font-family: monospace;
+    }
+
+    /* Save Toast */
+    .save-toast {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: rgba(124, 138, 255, 0.9);
+      color: #fff;
+      padding: 4px 14px;
+      border-radius: 16px;
+      font-size: 11px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s;
+    }
+    .save-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📋 Markdown Paste Helper</h1>
+  </div>
+  <div id="status" class="status inactive">
+    检测中...
+  </div>
+  <div class="hint" id="hint"></div>
+
+  <!-- WeChat Settings Panel (only shown on mp.weixin.qq.com) -->
+  <div id="wechatSettings">
+    <div class="settings-title">⚙️ 公众号样式配置</div>
+
+    <!-- 主题色 -->
+    <div class="config-section">
+      <div class="section-label">主题色</div>
+      <div class="color-grid" id="colorGrid"></div>
+      <div class="custom-color-row">
+        <label>自定义</label>
+        <input type="color" id="customColorPicker" value="#4B6EF5">
+        <span class="custom-color-value" id="customColorValue">#4B6EF5</span>
+      </div>
+    </div>
+
+    <!-- 风格预设 -->
+    <div class="config-section">
+      <div class="section-label">风格预设</div>
+      <div class="style-grid" id="styleGrid">
+        <div class="style-card active" data-style="minimalist">
+          <div class="style-preview minimalist">
+            <div class="preview-title"></div>
+            <div class="preview-line"></div>
+            <div class="preview-line short"></div>
+          </div>
+          <div class="style-name">简约</div>
+        </div>
+        <div class="style-card" data-style="bold">
+          <div class="style-preview bold">
+            <div class="preview-title"></div>
+            <div class="preview-line"></div>
+            <div class="preview-line short"></div>
+          </div>
+          <div class="style-name">醒目</div>
+        </div>
+        <div class="style-card" data-style="elegant">
+          <div class="style-preview elegant">
+            <div class="preview-title"></div>
+            <div class="preview-line"></div>
+            <div class="preview-line short"></div>
+          </div>
+          <div class="style-name">精致</div>
+        </div>
+        <div class="style-card" data-style="focus">
+          <div class="style-preview focus">
+            <div class="preview-title"></div>
+            <div class="preview-line"></div>
+            <div class="preview-line short"></div>
+          </div>
+          <div class="style-name">聚焦</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 高级设置 -->
+    <div class="config-section">
+      <div class="advanced-toggle" id="advancedToggle">
+        <span>高级设置</span>
+        <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+      </div>
+      <div class="advanced-content" id="advancedContent">
+        <!-- 字体 -->
+        <div class="setting-row">
+          <label>字体</label>
+          <div class="btn-group" id="fontGroup">
+            <button class="radio-btn active" data-value="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">Default</button>
+            <button class="radio-btn" data-value="Optima-Regular, Optima, PingFangTC-Light, PingFangSC-light, PingFangTC-light">Optima</button>
+            <button class="radio-btn" data-value="Georgia, 'Times New Roman', Times, serif">Georgia</button>
+          </div>
+        </div>
+        <!-- 字号 -->
+        <div class="setting-row">
+          <label>字体大小</label>
+          <div class="btn-group font-size-group" id="fontSizeGroup">
+            <button class="radio-btn" data-value="14">14</button>
+            <button class="radio-btn" data-value="15">15</button>
+            <button class="radio-btn active" data-value="16">16</button>
+            <button class="radio-btn" data-value="17">17</button>
+            <button class="radio-btn" data-value="18">18</button>
+          </div>
+        </div>
+        <!-- 段落间距 -->
+        <div class="setting-row">
+          <label>段落间距</label>
+          <div class="btn-group" id="lineSpacingGroup">
+            <button class="radio-btn" data-value="1.5">紧凑</button>
+            <button class="radio-btn active" data-value="1.75">适中</button>
+            <button class="radio-btn" data-value="2.0">宽松</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    v1.0
+  </div>
+
+  <div class="save-toast" id="saveToast">✓ 已保存</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

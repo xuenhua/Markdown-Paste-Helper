@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Dependencies
+node_modules/
+
+# Archives
+*.zip
+
+# Temporary
+*.log
+
+# Project notes (not part of extension)
+plan.md
+record.md
+test.md
+公众号样式/
+
+# AI tools
+.claude/
