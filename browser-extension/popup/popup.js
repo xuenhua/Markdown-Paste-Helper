@@ -26,6 +26,7 @@
     wechat: { name: '公众号', emoji: '💬' },
     feishu: { name: '飞书', emoji: '🐦' },
     twitter: { name: 'X', emoji: '𝕏' },
+    bilibili: { name: 'B站专栏', emoji: '📺' },
   };
 
   async function init() {
@@ -47,6 +48,8 @@
           platform = 'feishu';
         } else if (url.hostname === 'x.com' && url.pathname.startsWith('/compose/articles/edit/')) {
           platform = 'twitter';
+        } else if (url.hostname === 'member.bilibili.com') {
+          platform = 'bilibili';
         }
 
         if (platform) {

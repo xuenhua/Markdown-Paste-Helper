@@ -20,7 +20,13 @@
         "*://mp.weixin.qq.com/*",
         "*://*.feishu.cn/*",
         "*://*.larkoffice.com/*",
-        "*://x.com/compose/*"
+        "*://x.com/*",
+        "*://member.bilibili.com/*",
+        "*://mp.toutiao.com/*",
+        "*://segmentfault.com/*",
+        "*://blog.51cto.com/*",
+        "*://www.imooc.com/*",
+        "*://creator.xiaohongshu.com/*"
       ],
       "js": [
         "lib/markdown-it.min.js",
@@ -30,6 +36,12 @@
         "content/platforms/wechat.js",
         "content/platforms/feishu.js",
         "content/platforms/twitter.js",
+        "content/platforms/bilibili.js",
+        "content/platforms/toutiao.js",
+        "content/platforms/segmentfault.js",
+        "content/platforms/51cto.js",
+        "content/platforms/imooc.js",
+        "content/platforms/xiaohongshu.js",
         "content/main.js"
       ],
       "run_at": "document_idle",
