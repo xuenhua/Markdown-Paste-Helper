@@ -29,8 +29,9 @@
     toutiao: '头条号',
     segmentfault: 'SegmentFault',
     '51cto': '51CTO',
-    imooc: '慕课网',
-    xiaohongshu: '小红书',
+    juejin: '掘金',
+    csdn: 'CSDN',
+    cnblogs: '博客园',
   };
 
   let toastContainer = null;
@@ -90,7 +91,7 @@
     const host = location.hostname;
     const path = location.pathname;
 
-    if (host === 'zhuanlan.zhihu.com' && path.endsWith('/edit')) {
+    if (host === 'zhuanlan.zhihu.com' && (path.includes('/write') || path.endsWith('/edit'))) {
       return 'zhihu';
     }
     if (host === 'mp.weixin.qq.com') {
@@ -99,26 +100,29 @@
     if (host.endsWith('.feishu.cn') || host.endsWith('.larkoffice.com')) {
       return 'feishu';
     }
-    if (host === 'x.com' && path.startsWith('/compose/articles/edit/')) {
+    if (host === 'x.com' && path.startsWith('/compose/articles')) {
       return 'twitter';
     }
-    if (host === 'member.bilibili.com') {
+    if (host === 'member.bilibili.com' && (path.includes('/upload/text') || path.includes('/article'))) {
       return 'bilibili';
     }
-    if (host === 'mp.toutiao.com') {
+    if (host === 'mp.toutiao.com' && path.includes('/publish')) {
       return 'toutiao';
     }
-    if (host === 'segmentfault.com') {
+    if (host === 'segmentfault.com' && path.includes('/write')) {
       return 'segmentfault';
     }
-    if (host === 'blog.51cto.com') {
+    if (host === 'blog.51cto.com' && path.includes('/publish')) {
       return '51cto';
     }
-    if (host === 'www.imooc.com') {
-      return 'imooc';
+    if ((host === 'editor.juejin.cn' || host === 'juejin.cn') && path.includes('/editor')) {
+      return 'juejin';
     }
-    if (host === 'creator.xiaohongshu.com') {
-      return 'xiaohongshu';
+    if ((host === 'editor.csdn.net' || host === 'mp.csdn.net') && (path.includes('/md') || path.includes('/editor'))) {
+      return 'csdn';
+    }
+    if (host === 'i.cnblogs.com' && path.includes('/posts')) {
+      return 'cnblogs';
     }
     return null;
   }
@@ -255,6 +259,9 @@
       let isSyntheticPaste = false;
 
       document.addEventListener('paste', function (e) {
+        // 跳过来自分发流程的 synthetic paste，避免二次处理导致图片重复
+        if (e._fromDistribution) return;
+
         if (isSyntheticPaste) {
           console.log('[Markdown Paste Helper] 合成 paste 事件，放行');
           return;
@@ -274,9 +281,13 @@
         if (strategy === 'synthetic-event') {
           e.preventDefault();
           e.stopImmediatePropagation();
+          // Strip image markdown syntax from text/plain to prevent Tiptap/ProseMirror
+          // from parsing ![alt](url) and uploading images (postPasteCleanup handles images)
+          const safeText = plainText.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+
           const dt = new DataTransfer();
           dt.setData('text/html', convertedHtml);
-          dt.setData('text/plain', plainText);
+          dt.setData('text/plain', safeText);
 
           const syntheticEvent = new ClipboardEvent('paste', {
             clipboardData: dt,
@@ -317,6 +328,180 @@
   const platform = detectPlatform();
   if (platform) {
     activateHandler(platform);
+  }
+
+  // ===== Auto-Paste Support (for one-click distribution) =====
+
+  // Check if there's a pending distribution on page load
+  checkPendingDistribution();
+
+  // Listen for auto-paste messages from background
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'auto-paste') {
+      handleAutoPaste(message.markdown, message.platform);
+    }
+  });
+
+  async function checkPendingDistribution() {
+    const platform = detectPlatform();
+    if (!platform) return;
+
+    try {
+      const result = await chrome.storage.local.get(['pendingDistribution']);
+      const pending = result.pendingDistribution;
+
+      if (pending && pending.platforms.includes(platform)) {
+        console.log(`[Markdown Paste Helper] 检测到待分发内容，平台: ${platform}`);
+
+        // Wait for editor to be ready
+        const editorReady = await waitForEditor(platform, 15000);
+        if (!editorReady) {
+          console.error('[Markdown Paste Helper] 编辑器未就绪，超时');
+          notifyPasteFailed(platform, '编辑器未检测到');
+          return;
+        }
+
+        // Notify background that editor is ready
+        chrome.runtime.sendMessage({
+          type: 'editor-ready',
+          platform,
+        });
+      }
+    } catch (err) {
+      console.error('[Markdown Paste Helper] 检查待分发内容失败:', err);
+    }
+  }
+
+  async function handleAutoPaste(markdown, platform) {
+    console.log(`[Markdown Paste Helper] 开始自动粘贴，平台: ${platform}`);
+
+    const handler = window.PlatformHandlers && window.PlatformHandlers[platform];
+    if (!handler) {
+      console.error(`[Markdown Paste Helper] 未找到平台 handler: ${platform}`);
+      notifyPasteFailed(platform, 'Handler 未找到');
+      return;
+    }
+
+    try {
+      await executeAutoPaste(markdown, handler, platform);
+      console.log(`[Markdown Paste Helper] ✅ 自动粘贴完成: ${platform}`);
+      notifyPasteComplete(platform);
+    } catch (err) {
+      console.error(`[Markdown Paste Helper] 自动粘贴失败: ${platform}`, err);
+      notifyPasteFailed(platform, err.message);
+    }
+  }
+
+  async function executeAutoPaste(markdown, handler, platform) {
+    const mode = handler.mode || 'convert-to-html';
+
+    if (mode === 'preprocess-text') {
+      // Preprocess → write to clipboard → execCommand('paste')
+      const processed = handler.preprocessText ? handler.preprocessText(markdown) : markdown;
+      await navigator.clipboard.writeText(processed);
+      await sleep(200);
+
+      const editor = document.querySelector('[contenteditable="true"]');
+      if (editor) editor.focus();
+      await sleep(100);
+
+      document.execCommand('paste');
+      console.log('[Markdown Paste Helper] preprocess-text 模式粘贴完成');
+
+    } else if (mode === 'keydown-html') {
+      // Convert to HTML → write to clipboard via ClipboardItem → execCommand('paste')
+      const processed = handler.preprocessText ? handler.preprocessText(markdown) : markdown;
+      const styledHtml = handler.getHtml(processed);
+
+      try {
+        const htmlBlob = new Blob([styledHtml], { type: 'text/html' });
+        const textBlob = new Blob([processed], { type: 'text/plain' });
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': htmlBlob,
+            'text/plain': textBlob
+          })
+        ]);
+        console.log('[Markdown Paste Helper] 剪贴板已写入带样式的 HTML');
+      } catch (writeErr) {
+        console.error('[Markdown Paste Helper] ClipboardItem 写入失败:', writeErr);
+        await navigator.clipboard.writeText(processed);
+      }
+
+      await sleep(200);
+
+      const editor = document.querySelector('[contenteditable="true"]');
+      if (editor) editor.focus();
+      await sleep(100);
+
+      document.execCommand('paste');
+      console.log('[Markdown Paste Helper] keydown-html 模式粘贴完成');
+
+      if (handler.postPasteCleanup) {
+        await sleep(500);
+        handler.postPasteCleanup();
+      }
+
+    } else if (mode === 'convert-to-html') {
+      // Convert to HTML → synthetic ClipboardEvent → dispatchEvent
+      const convertedHtml = handler.getHtml(markdown);
+
+      const dt = new DataTransfer();
+      dt.setData('text/html', convertedHtml);
+      dt.setData('text/plain', markdown);
+
+      const syntheticEvent = new ClipboardEvent('paste', {
+        clipboardData: dt,
+        bubbles: true,
+        cancelable: true,
+      });
+
+      const editor = document.querySelector('[contenteditable="true"]') || document.body;
+      if (editor.contentEditable === 'true') editor.focus();
+      await sleep(100);
+
+      editor.dispatchEvent(syntheticEvent);
+      console.log('[Markdown Paste Helper] convert-to-html 模式粘贴完成');
+
+      if (handler.postPasteCleanup) {
+        await sleep(500);
+        handler.postPasteCleanup();
+      }
+    }
+  }
+
+  async function waitForEditor(platform, timeout = 15000) {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+      const editor = document.querySelector('[contenteditable="true"]');
+      if (editor) {
+        console.log('[Markdown Paste Helper] 编辑器已就绪');
+        return true;
+      }
+      await sleep(500);
+    }
+
+    return false;
+  }
+
+  function notifyPasteComplete(platform) {
+    chrome.runtime.sendMessage({
+      type: 'paste-complete',
+      platform,
+    }).catch(() => {});
+  }
+
+  function notifyPasteFailed(platform, message) {
+    chrome.runtime.sendMessage({
+      type: 'paste-failed',
+      platform,
+      message,
+    }).catch(() => {});
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   // ===== SPA Navigation Support =====

@@ -3,7 +3,7 @@
   "name": "Markdown Paste Helper",
   "version": "1.0.0",
   "description": "自动将 Markdown 内容转换为适配各平台的富文本格式。支持知乎、公众号、飞书、X Articles（自动转换），掘金、CSDN（原生 Markdown 支持）。",
-  "permissions": ["storage", "clipboardRead", "clipboardWrite", "activeTab"],
+  "permissions": ["storage", "clipboardRead", "clipboardWrite", "activeTab", "tabs", "cookies"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
@@ -25,13 +25,17 @@
         "*://mp.toutiao.com/*",
         "*://segmentfault.com/*",
         "*://blog.51cto.com/*",
-        "*://www.imooc.com/*",
-        "*://creator.xiaohongshu.com/*"
+        "*://editor.juejin.cn/*",
+        "*://juejin.cn/*",
+        "*://editor.csdn.net/*",
+        "*://mp.csdn.net/*",
+        "*://i.cnblogs.com/*"
       ],
       "js": [
         "lib/markdown-it.min.js",
         "lib/highlight.min.js",
         "content/markdown-converter.js",
+        "content/distribution-float.js",
         "content/platforms/zhihu.js",
         "content/platforms/wechat.js",
         "content/platforms/feishu.js",
@@ -40,8 +44,9 @@
         "content/platforms/toutiao.js",
         "content/platforms/segmentfault.js",
         "content/platforms/51cto.js",
-        "content/platforms/imooc.js",
-        "content/platforms/xiaohongshu.js",
+        "content/platforms/juejin.js",
+        "content/platforms/csdn.js",
+        "content/platforms/cnblogs.js",
         "content/main.js"
       ],
       "run_at": "document_idle",

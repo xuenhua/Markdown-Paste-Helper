@@ -21,56 +21,7 @@
   let currentConfig = { ...DEFAULT_CONFIG };
   let saveTimeout;
 
-  const platformInfo = {
-    zhihu: { name: '知乎', emoji: '📝' },
-    wechat: { name: '公众号', emoji: '💬' },
-    feishu: { name: '飞书', emoji: '🐦' },
-    twitter: { name: 'X', emoji: '𝕏' },
-    bilibili: { name: 'B站专栏', emoji: '📺' },
-  };
-
   async function init() {
-    const statusEl = document.getElementById('status');
-    const hintEl = document.getElementById('hint');
-
-    try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-      if (tab && tab.url) {
-        const url = new URL(tab.url);
-        let platform = null;
-
-        if (url.hostname === 'zhuanlan.zhihu.com' && url.pathname.endsWith('/edit')) {
-          platform = 'zhihu';
-        } else if (url.hostname === 'mp.weixin.qq.com') {
-          platform = 'wechat';
-        } else if (url.hostname.endsWith('.feishu.cn') || url.hostname.endsWith('.larkoffice.com')) {
-          platform = 'feishu';
-        } else if (url.hostname === 'x.com' && url.pathname.startsWith('/compose/articles/edit/')) {
-          platform = 'twitter';
-        } else if (url.hostname === 'member.bilibili.com') {
-          platform = 'bilibili';
-        }
-
-        if (platform) {
-          const info = platformInfo[platform];
-          statusEl.className = 'status active';
-          statusEl.innerHTML = `${info.emoji} 已激活 — <span class="platform-name">${info.name}</span>`;
-          hintEl.textContent = '直接粘贴 Markdown 内容即可，插件会自动转换格式。';
-        } else {
-          statusEl.className = 'status inactive';
-          statusEl.textContent = '😴 当前页面不是支持的编辑器';
-          hintEl.textContent = '支持：知乎文章编辑器、公众号编辑器、飞书文档、X Articles';
-        }
-      } else {
-        statusEl.className = 'status inactive';
-        statusEl.textContent = '😴 当前页面不是支持的编辑器';
-        hintEl.textContent = '支持：知乎文章编辑器、公众号编辑器、飞书文档、X Articles';
-      }
-    } catch (err) {
-      statusEl.textContent = '检测失败';
-    }
-
     // Always show WeChat settings panel
     initWechatSettings();
   }
@@ -194,6 +145,14 @@
     saveTimeout = setTimeout(() => {
       toast.classList.remove('show');
     }, 1200);
+  }
+
+  // ===== Distribute Button =====
+  const distributeBtn = document.getElementById('distributeBtn');
+  if (distributeBtn) {
+    distributeBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('distribute/distribute.html') });
+    });
   }
 
   init();

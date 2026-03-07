@@ -133,7 +133,7 @@
     pendingImages = [];
     if (items.length === 0) return;
 
-    console.log(`[Toutiao Auto] 按文档顺序处理 ${items.length} 张图片...`);
+    console.log(`[Markdown Paste Helper] 按文档顺序处理 ${items.length} 张图片...`);
 
     const showToast = window._mdphShowToast;
     const removeToast = window._mdphRemoveToast;
@@ -156,10 +156,10 @@
         const bytes = new Uint8Array(bin.length);
         for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
         it._blob = new Blob([bytes], { type: result.mimeType });
-        console.log(`[Toutiao Auto] ✅ 预下载完成: ${it.alt || it.url}`);
+        console.log(`[Markdown Paste Helper] ✅ 预下载完成: ${it.alt || it.url}`);
       } catch (err) {
         console.warn(
-          `[Toutiao Auto] ❌ 预下载失败: ${it.alt} — ${err.message}`,
+          `[Markdown Paste Helper] ❌ 预下载失败: ${it.alt} — ${err.message}`,
         );
         it._blob = null;
       }
@@ -177,7 +177,7 @@
       try {
         const markerInfo = findMarkerInEditor(item.marker);
         if (!markerInfo) {
-          console.warn(`[Toutiao Auto] ❌ 未找到: ${item.marker}`);
+          console.warn(`[Markdown Paste Helper] ❌ 未找到: ${item.marker}`);
           continue;
         }
 
@@ -204,17 +204,17 @@
         await sleep(100);
 
         await processImageViaPaste(item);
-        console.log(`[Toutiao Auto] ✅ 图片插入完成`);
+        console.log(`[Markdown Paste Helper] ✅ 图片插入完成`);
         await sleep(1500); // Wait for upload UI
       } catch (err) {
-        console.error(`[Toutiao Auto] 插入图片失败:`, err);
+        console.error(`[Markdown Paste Helper] 插入图片失败:`, err);
       }
     }
 
     // Final cleanup: remove empty paragraphs adjacent to images
     cleanupEmptyParagraphsAroundImages();
 
-    console.log("[Toutiao Auto] ✅ 图片全部插入完成");
+    console.log("[Markdown Paste Helper] ✅ 图片全部插入完成");
 
     if (removeToast && progressToast) removeToast(progressToast);
     if (showToast)

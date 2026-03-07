@@ -23,37 +23,34 @@
       font-weight: 600;
       color: #7c8aff;
     }
-    .status {
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      line-height: 1.5;
-      margin-bottom: 12px;
-    }
-    .status.active {
-      background: rgba(40, 167, 69, 0.15);
-      border: 1px solid rgba(40, 167, 69, 0.3);
-      color: #6fcf7c;
-    }
-    .status.inactive {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      color: #888;
-    }
-    .platform-name {
-      font-weight: 600;
-      color: #fff;
-    }
-    .hint {
-      font-size: 12px;
-      color: #666;
-      line-height: 1.6;
-      margin-top: 4px;
-    }
     .footer {
       margin-top: 12px;
       padding-top: 12px;
       border-top: 1px solid #2a2d3a;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .distribute-btn {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .distribute-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .distribute-btn:active {
+      transform: translateY(0);
+    }
+    .version {
       font-size: 11px;
       color: #555;
       text-align: center;
@@ -295,16 +292,11 @@
 </head>
 <body>
   <div class="header">
-    <h1>📋 Markdown Paste Helper</h1>
+    <h1><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 13h-2"/><path d="M10 17H8"/><path d="M16 17h-2"/></svg> Markdown Paste Helper</h1>
   </div>
-  <div id="status" class="status inactive">
-    检测中...
-  </div>
-  <div class="hint" id="hint"></div>
-
   <!-- WeChat Settings Panel (only shown on mp.weixin.qq.com) -->
   <div id="wechatSettings">
-    <div class="settings-title">⚙️ 公众号样式配置</div>
+    <div class="settings-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg> 公众号样式配置</div>
 
     <!-- 主题色 -->
     <div class="config-section">
@@ -397,10 +389,11 @@
   </div>
 
   <div class="footer">
-    v1.0
+    <button id="distributeBtn" class="distribute-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> 一键分发</button>
+    <div class="version">v1.0</div>
   </div>
 
-  <div class="save-toast" id="saveToast">✓ 已保存</div>
+  <div class="save-toast" id="saveToast"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="M20 6 9 17l-5-5"/></svg> 已保存</div>
 
   <script src="popup.js"></script>
 </body>

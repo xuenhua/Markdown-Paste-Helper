@@ -143,7 +143,7 @@
     pendingItems = [];
     if (items.length === 0) return;
 
-    console.log(`[X Auto] 按文档顺序处理 ${items.length} 项...`);
+    console.log(`[Markdown Paste Helper] 按文档顺序处理 ${items.length} 项...`);
 
     // Show progress toast (use global toast functions from main.js)
     const showToast = window._mdphShowToast;
@@ -173,9 +173,9 @@
           const bytes = new Uint8Array(bin.length);
           for (let j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
           it._blob = new Blob([bytes], { type: result.mimeType });
-          console.log(`[X Auto] ✅ 预下载完成: ${it.alt || it.url}`);
+          console.log(`[Markdown Paste Helper] ✅ 预下载完成: ${it.alt || it.url}`);
         } catch (err) {
-          console.warn(`[X Auto] ❌ 预下载失败: ${it.alt} — ${err.message}`);
+          console.warn(`[Markdown Paste Helper] ❌ 预下载失败: ${it.alt} — ${err.message}`);
           it._blob = null;
         }
       });
@@ -187,7 +187,7 @@
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const label = item.type === "code" ? "代码块" : "图片";
-      console.log(`[X Auto] [${i + 1}/${items.length}] ${label}`);
+      console.log(`[Markdown Paste Helper] [${i + 1}/${items.length}] ${label}`);
 
       // Update progress toast
       if (progressToast) {
@@ -198,7 +198,7 @@
         // Step 1: Find marker, get its position, scroll to it
         const markerInfo = findMarkerInEditor(item.marker);
         if (!markerInfo) {
-          console.warn(`[X Auto] ❌ 未找到: ${item.marker}`);
+          console.warn(`[Markdown Paste Helper] ❌ 未找到: ${item.marker}`);
           continue;
         }
 
@@ -237,16 +237,16 @@
           await processImageViaPaste(item);
         }
 
-        console.log(`[X Auto] ✅ ${label} 完成`);
+        console.log(`[Markdown Paste Helper] ✅ ${label} 完成`);
         await sleep(800);
       } catch (err) {
-        console.error(`[X Auto] ${item.marker} 失败:`, err);
+        console.error(`[Markdown Paste Helper] ${item.marker} 失败:`, err);
         pressEscape();
         await sleep(300);
       }
     }
 
-    console.log("[X Auto] ✅ 全部完成");
+    console.log("[Markdown Paste Helper] ✅ 全部完成");
 
     // Replace progress toast with success toast
     if (removeToast && progressToast) removeToast(progressToast);
@@ -374,7 +374,7 @@
     });
 
     // Dispatch on the editor — Draft.js's handlePastedFiles should pick it up
-    console.log("[X Auto] 派发图片粘贴事件...");
+    console.log("[Markdown Paste Helper] 派发图片粘贴事件...");
     editor.dispatchEvent(pasteEvent);
 
     // Wait for X to upload and insert the image
@@ -409,7 +409,7 @@
 
     const insertBtn = findClickableByText("插入");
     if (!insertBtn) {
-      console.warn("[X Auto] 未找到「插入」按钮");
+      console.warn("[Markdown Paste Helper] 未找到「插入」按钮");
       return false;
     }
     insertBtn.click();
@@ -417,7 +417,7 @@
 
     const option = findClickableByText(optionText);
     if (!option) {
-      console.warn(`[X Auto] 未找到「${optionText}」`);
+      console.warn(`[Markdown Paste Helper] 未找到「${optionText}」`);
       pressEscape();
       return false;
     }

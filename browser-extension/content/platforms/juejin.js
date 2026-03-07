@@ -1,26 +1,23 @@
 /**
- * imooc (慕课网) platform handler
+ * 掘金 platform handler
  *
  * Strategy: preprocess-text mode.
- * 慕课网 uses a cledit (StackEdit) based native Markdown editor.
- * It accepts raw Markdown text directly, so we only need to preprocess
- * unsupported syntax (details/summary, GitHub alerts, task lists).
+ * 掘金 uses ByteMD, a native Markdown editor.
+ * It accepts raw Markdown text directly.
  */
 (function () {
   "use strict";
   console.log(
-    "%c[Markdown Paste Helper] ✅ imooc.js 已加载",
+    "%c[Markdown Paste Helper] juejin.js loaded",
     "color: lime; font-size: 14px;",
   );
 
   function preprocessText(text) {
     let processed = text;
 
-    // 1. Convert task list checkboxes to emoji
     processed = processed.replace(/^(\s*)- \[x\] /gm, "$1- ✅ ");
     processed = processed.replace(/^(\s*)- \[ \] /gm, "$1- ⬜ ");
 
-    // 2. Replace <details><summary>...</summary>...</details>
     processed = processed.replace(
       /<details>\s*\n\s*<summary>([\s\S]*?)<\/summary>\s*\n([\s\S]*?)\n\s*<\/details>/gi,
       (_, summary, content) => `**${summary.trim()}**\n\n${content.trim()}`,
@@ -30,7 +27,6 @@
       (_, summary, content) => `**${summary.trim()}**\n\n${content.trim()}`,
     );
 
-    // 3. Replace GitHub-style alerts
     processed = processed.replace(
       /^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/gm,
       (_, type) => {
@@ -45,15 +41,14 @@
       },
     );
 
-    // 4. Clean excessive blank lines
     processed = processed.replace(/\n{3,}/g, "\n\n");
 
-    console.log("[Markdown Paste Helper] 慕课网 预处理完成");
+    console.log("[Markdown Paste Helper] 掘金预处理完成");
     return processed;
   }
 
   window.PlatformHandlers = window.PlatformHandlers || {};
-  window.PlatformHandlers.imooc = {
+  window.PlatformHandlers.juejin = {
     mode: "preprocess-text",
     preprocessText,
   };
