@@ -353,10 +353,9 @@
         break;
 
       case 'cnblogs':
-        // 博客园: Markdown editor
-        editor = document.querySelector('#Editor_Edit_EditorBody .CodeMirror') ||
-                 document.querySelector('.CodeMirror') ||
-                 document.querySelector('[contenteditable="true"]');
+        // 博客园: native textarea Markdown editor
+        editor = document.querySelector('textarea#md-editor') ||
+                 document.querySelector('textarea[name="editor"]');
         break;
 
       default:
@@ -457,37 +456,59 @@
       }
 
       // 记录粘贴前的编辑器内容长度，用于验证粘贴是否真正成功
-      const contentBefore = (editor.textContent || '').replace(/\s/g, '').length;
+      const isTextarea = editor.tagName === 'TEXTAREA' || editor.tagName === 'INPUT';
+      const contentBefore = isTextarea
+        ? (editor.value || '').replace(/\s/g, '').length
+        : (editor.textContent || '').replace(/\s/g, '').length;
 
       if (mode === 'preprocess-text') {
         const processed = handler.preprocessText ? handler.preprocessText(markdown) : markdown;
 
-        if (editor.contentEditable === 'true') editor.focus();
-        await sleep(100);
-
-        // 优先尝试 synthetic ClipboardEvent（不受安全策略限制）
-        const dt = new DataTransfer();
-        dt.setData('text/plain', processed);
-        const syntheticEvent = new ClipboardEvent('paste', {
-          clipboardData: dt,
-          bubbles: true,
-          cancelable: true,
-        });
-        syntheticEvent._fromDistribution = true;
-        editor.dispatchEvent(syntheticEvent);
-
-        // 等待编辑器处理粘贴事件
-        await sleep(500);
-
-        // 验证是否粘贴成功，如果没有则尝试 execCommand fallback
-        const contentAfterSynthetic = (editor.textContent || '').replace(/\s/g, '').length;
-        if (contentAfterSynthetic <= contentBefore) {
-          console.log('[Markdown Paste Helper] Synthetic paste did not work, trying clipboard + execCommand...');
-          await navigator.clipboard.writeText(processed);
-          await sleep(200);
+        if (isTextarea) {
+          // Textarea 编辑器（如博客园）：直接设置 value 并触发事件
           editor.focus();
           await sleep(100);
-          editorDoc.execCommand('paste');
+          editor.value = processed;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+          editor.dispatchEvent(new Event('change', { bubbles: true }));
+          console.log('[Markdown Paste Helper] Textarea value set directly');
+        } else {
+          if (editor.contentEditable === 'true') editor.focus();
+          await sleep(100);
+
+          // 优先尝试 synthetic ClipboardEvent（不受安全策略限制）
+          const dt = new DataTransfer();
+          dt.setData('text/plain', processed);
+          const syntheticEvent = new ClipboardEvent('paste', {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true,
+          });
+          syntheticEvent._fromDistribution = true;
+          editor.dispatchEvent(syntheticEvent);
+
+          // 等待编辑器处理粘贴事件
+          await sleep(500);
+
+          // 验证是否粘贴成功，如果没有则尝试 execCommand fallback
+          const contentAfterSynthetic = (editor.textContent || '').replace(/\s/g, '').length;
+          if (contentAfterSynthetic <= contentBefore) {
+            console.log('[Markdown Paste Helper] Synthetic paste did not work, trying clipboard + execCommand...');
+            await navigator.clipboard.writeText(processed);
+            await sleep(200);
+            editor.focus();
+            await sleep(100);
+            editorDoc.execCommand('paste');
+          }
+        }
+
+        if (handler.postPasteCleanup) {
+          await sleep(500);
+          try {
+            await handler.postPasteCleanup();
+          } catch (cleanupErr) {
+            console.warn('[Markdown Paste Helper] postPasteCleanup error (non-fatal):', cleanupErr);
+          }
         }
 
       } else if (mode === 'keydown-html') {
@@ -577,7 +598,9 @@
 
       // 最终验证：粘贴后编辑器内容是否真的增加了
       await sleep(300);
-      const contentAfter = (editor.textContent || '').replace(/\s/g, '').length;
+      const contentAfter = isTextarea
+        ? (editor.value || '').replace(/\s/g, '').length
+        : (editor.textContent || '').replace(/\s/g, '').length;
       if (contentAfter > contentBefore) {
         console.log('[Markdown Paste Helper] Paste verified successful');
         updateFloatButtonState('success');

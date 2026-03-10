@@ -95,6 +95,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handlePasteResult(message);
     return false;
   }
+
+  // ===== CSDN Image Upload =====
+  if (message.type === 'csdn-upload-image') {
+    csdnUploadImage(message.url, message.suffix || 'png')
+      .then((result) => sendResponse(result))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
 });
 
 // ===== Serial Distribution Handler =====
@@ -304,6 +312,39 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   } catch (err) {
     // 标签页可能已关闭
   }
+});
+
+// 监听标签页 URL 变化 / 加载完成
+// 解决飞书等平台新建文档时自动打开新标签页的问题：
+// onActivated 在新 tab 打开时触发，但此时 content script 尚未加载；
+// onUpdated 在页面加载完成后触发，此时可以发送 distribution-active 消息。
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  // 只在页面加载完成时处理
+  if (changeInfo.status !== 'complete') return;
+
+  const dist = distributionState.currentDistribution;
+  if (!dist) return;
+
+  const platform = dist.queue[dist.currentIndex];
+  if (!PLATFORMS_NEW_TAB_EDITOR.has(platform)) return;
+  if (dist.status[platform] === 'success') return;
+
+  const tabUrl = tab.url || '';
+
+  // 检查 URL 是否属于当前平台
+  const domainMatch = PLATFORM_DOMAIN_PATTERNS[platform];
+  if (!domainMatch || !domainMatch(tabUrl)) return;
+
+  // 跳过已经处理过的 URL（避免重复发送）
+  if (tabId === distributionState.currentTabId && distributionState.sentForUrl === tabUrl) return;
+
+  console.log(`[Markdown Paste Helper] ${platform} tab ${tabId} loaded: ${tabUrl}, sending distribution-active`);
+
+  // 更新为新标签页
+  distributionState.currentTabId = tabId;
+  distributionState.sentForUrl = null;
+
+  waitForContentScript(tabId, platform);
 });
 
 function handlePasteResult({ type, platform, message: msg }) {
@@ -912,6 +953,164 @@ async function fetchImageAsBase64(url) {
 
     return { success: true, base64, mimeType };
   } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// ===== CSDN Image Upload =====
+
+const CSDN_UPLOAD_APP_KEY = '260196572';
+const CSDN_UPLOAD_APP_SECRET = 't5PaqxVQpWoHgLGt7XPIvd5ipJcwJTU7';
+
+/**
+ * HMAC-SHA256 签名（用于 CSDN API 网关）
+ */
+async function csdnHmacSha256(message, secret) {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  const bytes = new Uint8Array(signature);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function csdnCreateUuid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+/**
+ * 上传图片到 CSDN
+ * @param {string} imageUrl - 原始图片 URL
+ * @param {string} suffix - 图片后缀 (png, jpg, etc.)
+ * @returns {Promise<{success: boolean, url?: string, error?: string}>}
+ */
+async function csdnUploadImage(imageUrl, suffix) {
+  console.log(`[Markdown Paste Helper] CSDN 上传图片: ${imageUrl}`);
+
+  try {
+    // Step 1: 下载原始图片
+    const imgResponse = await fetch(imageUrl);
+    if (!imgResponse.ok) {
+      return { success: false, error: `下载图片失败: HTTP ${imgResponse.status}` };
+    }
+    const imgBlob = await imgResponse.blob();
+    const mimeType = imgBlob.type || `image/${suffix}`;
+    console.log(`[Markdown Paste Helper] 图片下载完成, size=${imgBlob.size}, type=${mimeType}`);
+
+    // Step 2: 获取上传签名
+    const apiPath = '/resource-api/v1/image/direct/upload/signature';
+    const nonce = csdnCreateUuid();
+    const timestamp = Date.now().toString();
+
+    // 构造签名字符串 (参照 CSDN httpGateway 签名方式)
+    const signStr = [
+      'POST',
+      'application/json, text/plain, */*',
+      '',
+      'application/json;charset=UTF-8',
+      '',
+      `x-ca-key:${CSDN_UPLOAD_APP_KEY}`,
+      `x-ca-nonce:${nonce}`,
+      `x-ca-timestamp:${timestamp}`,
+      apiPath,
+    ].join('\n');
+
+    const signature = await csdnHmacSha256(signStr, CSDN_UPLOAD_APP_SECRET);
+
+    const sigResponse = await fetch(`https://bizapi.csdn.net${apiPath}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'accept': 'application/json, text/plain, */*',
+        'content-type': 'application/json;charset=UTF-8',
+        'x-ca-key': CSDN_UPLOAD_APP_KEY,
+        'x-ca-nonce': nonce,
+        'x-ca-signature': signature,
+        'x-ca-signature-headers': 'x-ca-key,x-ca-nonce,x-ca-timestamp',
+        'x-ca-timestamp': timestamp,
+      },
+      body: JSON.stringify({
+        imageTemplate: '',
+        appName: 'direct_blog_markdown',
+        imageSuffix: suffix,
+      }),
+    });
+
+    if (!sigResponse.ok) {
+      return { success: false, error: `获取签名失败: HTTP ${sigResponse.status}` };
+    }
+
+    const sigResult = await sigResponse.json();
+    if (sigResult.code !== 200 || !sigResult.data) {
+      return { success: false, error: `签名 API 返回错误: ${JSON.stringify(sigResult)}` };
+    }
+
+    const sigData = sigResult.data;
+    console.log(`[Markdown Paste Helper] 获取签名成功, filePath=${sigData.filePath}`);
+
+    // Step 3: 上传到华为 OBS
+    const formData = new FormData();
+    formData.append('key', sigData.filePath);
+    formData.append('policy', sigData.policy);
+    formData.append('signature', sigData.signature);
+
+    // OBS provider: 使用 callbackUrl + AccessKeyId
+    if (sigData.provider === 'obs') {
+      formData.append('callbackUrl', sigData.callbackUrl);
+      formData.append('AccessKeyId', sigData.accessId);
+    } else {
+      // OSS provider fallback
+      formData.append('callback', sigData.callbackUrl);
+      formData.append('OSSAccessKeyId', sigData.accessId);
+    }
+
+    formData.append('callbackBody', sigData.callbackBody);
+    formData.append('callbackBodyType', sigData.callbackBodyType);
+
+    // 添加自定义参数
+    if (sigData.customParam) {
+      for (const [key, value] of Object.entries(sigData.customParam)) {
+        formData.append(`x:${key}`, value);
+      }
+    }
+
+    // 最后添加文件
+    const fileName = `upload.${suffix}`;
+    const imgFile = new File([imgBlob], fileName, { type: mimeType });
+    formData.append('file', imgFile);
+
+    const uploadResponse = await fetch(sigData.host, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!uploadResponse.ok) {
+      return { success: false, error: `上传到 OBS 失败: HTTP ${uploadResponse.status}` };
+    }
+
+    const uploadResult = await uploadResponse.json();
+    console.log(`[Markdown Paste Helper] OBS 上传结果:`, uploadResult);
+
+    // 从返回中提取 CSDN 图床 URL
+    const csdnUrl = uploadResult.data?.imageUrl || uploadResult.imageUrl ||
+      `https://i-blog.csdnimg.cn/direct/${sigData.filePath.split('/').pop()}`;
+
+    console.log(`[Markdown Paste Helper] CSDN 图片 URL: ${csdnUrl}`);
+    return { success: true, url: csdnUrl };
+
+  } catch (err) {
+    console.error('[Markdown Paste Helper] CSDN 上传图片失败:', err);
     return { success: false, error: err.message };
   }
 }

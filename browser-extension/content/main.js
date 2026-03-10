@@ -179,6 +179,10 @@
           isReTriggering = false;
 
           console.log('[Markdown Paste Helper] ✅ 已重新触发粘贴');
+
+          if (handler.postPasteCleanup) {
+            handler.postPasteCleanup();
+          }
         } catch (err) {
           console.error('[Markdown Paste Helper] 剪贴板处理失败:', err);
           isReTriggering = false;
@@ -398,15 +402,32 @@
     if (mode === 'preprocess-text') {
       // Preprocess → write to clipboard → execCommand('paste')
       const processed = handler.preprocessText ? handler.preprocessText(markdown) : markdown;
-      await navigator.clipboard.writeText(processed);
-      await sleep(200);
 
-      const editor = document.querySelector('[contenteditable="true"]');
-      if (editor) editor.focus();
-      await sleep(100);
+      // 博客园使用 textarea，需要直接设置 value
+      const textarea = document.querySelector('textarea#md-editor');
+      if (textarea) {
+        textarea.focus();
+        await sleep(100);
+        textarea.value = processed;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.dispatchEvent(new Event('change', { bubbles: true }));
+        console.log('[Markdown Paste Helper] preprocess-text 模式 textarea 粘贴完成');
+      } else {
+        await navigator.clipboard.writeText(processed);
+        await sleep(200);
 
-      document.execCommand('paste');
-      console.log('[Markdown Paste Helper] preprocess-text 模式粘贴完成');
+        const editor = document.querySelector('[contenteditable="true"]');
+        if (editor) editor.focus();
+        await sleep(100);
+
+        document.execCommand('paste');
+        console.log('[Markdown Paste Helper] preprocess-text 模式粘贴完成');
+      }
+
+      if (handler.postPasteCleanup) {
+        await sleep(500);
+        handler.postPasteCleanup();
+      }
 
     } else if (mode === 'keydown-html') {
       // Convert to HTML → write to clipboard via ClipboardItem → execCommand('paste')
@@ -474,7 +495,9 @@
     const startTime = Date.now();
 
     while (Date.now() - startTime < timeout) {
-      const editor = document.querySelector('[contenteditable="true"]');
+      // 博客园使用 textarea，其他平台使用 contenteditable
+      const editor = document.querySelector('[contenteditable="true"]') ||
+                     document.querySelector('textarea#md-editor');
       if (editor) {
         console.log('[Markdown Paste Helper] 编辑器已就绪');
         return true;
