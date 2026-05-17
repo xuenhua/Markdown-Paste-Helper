@@ -67,6 +67,36 @@
         return `> **${labels[type]}**\n>\n>`;
       },
     );
+    // sphinx 、docusaurus 等文档工具也会生成类似的提示框，格式稍有不同，额外再匹配一次
+    // 3. Sphinx / Docusaurus Admonitions (e.g., ::: tip, !!! note)
+    // 匹配 ::: type 或 !!! type 开头的行，并将其转换为 GitHub 风格的引用块以便后续处理
+    processed = processed.replace(
+      ///^(\s*)[:!]{3}\s*(note|tip|important|warning|caution|info|success|danger)\s*$/gim,
+      /^(\s*)[:!]{3}\s*{*\s*(note|tip|important|warning|caution|info|success|danger)\s*}*\s*$/gim,
+      (_, indent, type) => {
+        const labels = {
+          NOTE: "📝 注意",
+          TIP: "💡 提示",
+          IMPORTANT: "❗ 重要",
+          WARNING: "⚠️ 警告",
+          CAUTION: "🚨 危险",
+          INFO: "ℹ️ 信息",
+          SUCCESS: "✅ 成功",
+          DANGER: "🔥 危险",
+        };
+        // 将捕获的类型转为大写以匹配 labels 键
+        const upperType = type.toUpperCase();
+        const label = labels[upperType] || upperType;
+        // 转换为标准 Markdown 引用块格式，保持缩进
+
+        return `${indent}> **${label}**\n${indent}>\n${indent}>`;
+      }
+    );
+    // 匹配结束标记 ::: 或 !!!，将其转换为空行或忽略，以闭合引用块
+    processed = processed.replace(
+      /^(\s*)[:!]{3}\s*$/gm,
+      ""
+    );
 
     // 3. Task lists
     processed = processed.replace(/^(\s*)- \[ \] /gm, "$1- ⬜ ");
